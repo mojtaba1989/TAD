@@ -1,0 +1,16 @@
+item {
+    id:1
+    name: 'marker_light'
+}
+
+item {
+    id: 2
+    name: 'Driver'
+}
+item {
+    id: 3
+    name: 'Passenger'
+}
+
+
+

@@ -1,0 +1,320 @@
+%% l plot
+
+x = 1:height(data1);
+
+for i = 1:height(data1)
+    lp1(i) = mean(data1.Lp(1:i));
+    ld1(i) = mean(data1.Ld(1:i));
+    l1(i) = mean(data1.L(1:i));
+    if i > 40
+        lp1(i) = (lp1(i)*std(lp1(i-20:i-1))+lp1(i-1))/(std(lp1(i-20:i-1))+1);
+        ld1(i) = (ld1(i)*std(ld1(i-20:i-1))+ld1(i-1))/(std(ld1(i-20:i-1))+1);
+        l1(i) = (l1(i)*std(l1(i-20:i-1))+l1(i-1))/(std(l1(i-20:i-1))+1);
+    end
+end
+
+figure(1);
+plot(x, lp1,'Color', '#0072Bd', 'LineWidth',1.5);hold on
+plot(x, data1.Lp,'Color', '#0072Bd','LineStyle','--', 'LineWidth',1.5)
+plot(x, ld1,'Color', '#d95319', 'LineWidth',1.5)
+plot(x, data1.Ld,'Color', '#d95319','LineStyle','--', 'LineWidth',1.5)
+plot(x, l1,'k', 'LineWidth',1.5); hold off
+set(gca, 'FontSize',12)
+grid on
+legend({'$\hat{l}_p$','$l_p$','$\hat{l}_d$','$l_p$','$\hat{l}$'},'Interpreter', 'latex','FontSize', 14)
+xlabel('samples')
+ylabel('l (m)')
+xlim([1, 200])
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(1), 'lPlot_after_calibration','epsc')
+
+
+
+for i = 1:height(data1)
+    lp2(i) = mean(data2.Lp(1:i));
+    ld2(i) = mean(data2.Ld(1:i));
+    l2(i) = mean(data2.L(1:i));
+        if i > 40
+        lp2(i) = (lp2(i)*std(lp2(i-20:i-1))+lp2(i-1))/(std(lp2(i-20:i-1))+1);
+        ld2(i) = (ld2(i)*std(ld2(i-20:i-1))+ld2(i-1))/(std(ld2(i-20:i-1))+1);
+        l2(i) = (l2(i)*std(l2(i-20:i-1))+l2(i-1))/(std(l2(i-20:i-1))+1);
+    end
+end
+
+figure(2);
+plot(x, lp2,'Color', '#0072Bd', 'LineWidth',1.5);hold on
+plot(x, data2.Lp,'Color', '#0072Bd','LineStyle','--', 'LineWidth',1.5)
+plot(x, ld2,'Color', '#d95319', 'LineWidth',1.5)
+plot(x, data2.Ld,'Color', '#d95319','LineStyle','--', 'LineWidth',1.5)
+plot(x, l2,'k', 'LineWidth',1.5); hold off
+set(gca, 'FontSize',12)
+grid on
+legend({'$\hat{l}_p$','$l_p$','$\hat{l}_d$','$l_p$','$\hat{l}$'},'Interpreter', 'latex','FontSize', 14)
+xlabel('samples')
+ylabel('l (m)')
+xlim([1, 200])
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(2), 'lPlot_before_calibration','epsc')
+
+
+%%
+name = 'dataset3-4';
+[cam,ver,slope]=cln(data3);
+
+xm = 40;
+ym = 4;
+error = cam-ver;
+
+dc = fitlm(ver,error);
+s= dc.Coefficients.Estimate;
+
+% figure(21)
+% plot(1:331,cam,1:331,ver)
+
+figure(1)
+plot(ver,error,'Color', '#0072Bd','Marker','.','LineStyle','none','MarkerSize',18);
+hold on; 
+plot([-xm xm], [-s(2)*xm+s(1) s(2)*xm+s(1)],'Color', 'r', 'LineWidth',1.5);
+hold off
+set(gca, 'FontSize',12)
+xlabel('True Angle (degree)')
+ylabel('Error (degree)')
+legend({'Error', 'Fitted Line'},'Location','southeast')
+xlim([-xm xm])
+ylim([-ym ym])
+grid on
+if s(1) >= 0
+    text(-xm+5,3.5,sprintf('y = %.3fx+%.3f',s(2),s(1)),'FontSize',14)
+else
+    text(-xm+5,3.5,sprintf('y = %.3fx-%.3f',s(2),-s(1)),'FontSize',14)
+end
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(1), [name '_errorver'],'png')
+
+
+%%
+% 
+% T = abs(error)> .1*abs(ver)+.5;
+% figure(2)
+% plot(ver_e,error,'.','MarkerSize',18);hold on
+% plot(ver_e(T),error(T),'r.','MarkerSize',18);hold off
+% xlabel('Hitch-angle (degree)');ylabel('Detrended Error (degree)')
+% legend({'Accepted', 'Not accepted'})
+% grid on
+% ylim([-2 2])
+% set(gca, 'FontSize',12)
+% set(gcf, 'Position', [100, 100, 600, 300])
+% % saveas(figure(2), [name '_error'],'epsc')
+% 
+% 
+% figure(3)
+% histfit(error)
+% xlim([-2 2])
+% xlabel('Error (degree)')
+% ylabel('Frequency')
+% legend({'Detrended Error', 'Fitted Distribution'})
+% dim = [.2 .6 .3 .3];
+% str = sprintf('mean = %f \nvar     = %f',mean(error),var(error));
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% set(gca, 'FontSize',12)
+% set(gcf, 'Position', [100, 100, 600, 300])
+% % saveas(figure(3), [name '_errorhist'],'epsc')
+% 
+
+
+
+%%
+close all
+
+name = 'dataset06';
+data = data06;
+l = height(data);
+
+
+x = 1:l;
+cam = data.Cam;
+error = cam-mean(cam);
+T = abs(error)>.5;
+figure(1)
+plot(x,error,'.','MarkerSize',18);hold on
+plot(x(T),error(T),'r.','MarkerSize',18);hold off
+xlabel('Samples');ylabel('Detrended Error (degree)')
+legend({'Accepted', 'Not accepted'})
+ylim([-.3 .3])
+grid on
+set(gca, 'FontSize',12)
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(1), [name '_error'],'epsc')
+
+figure(2)
+histfit(error)
+xlim([-.3 .3])
+xlabel('Error (degree)')
+ylabel('Frequency')
+legend({'Detrended Error', 'Fitted Distribution'})
+dim = [.2 .6 .3 .3];
+str = sprintf('var     = %f',var(error));
+annotation('textbox',dim,'String',str,'FitBoxToText','on');
+set(gca, 'FontSize',12)
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(2), [name '_errorhist'],'epsc')
+
+%% reliability study
+close all
+
+as = [.1];
+bs = [.5];
+k=1;
+for ia = 1:length(as)
+    for ib = 1:length(bs)
+        a = as(ia);
+        b = bs(ib);
+        leg{k} = sprintf('$$\\pm$$(%d%s $\\theta_h$+%0.2f)',a*100,'\%',b);k=k+1;
+        fy = @(y)((y+b)/(1-a));
+        fx = @(x)((1+a)*x + b);
+        edges = fy(0);
+        mid = 0;
+        for i = 2:160
+            edges(i) = fy(fx(edges(i-1)));
+            mid(i) = fy(edges(i));
+        end
+        edges = edges(edges<60);
+        edges = [0 edges];
+        edges = 0:5:60;
+        name = 'dataset1';
+
+        [S1, Count1] = reli(data1,edges,a,b,20);
+        [S2, Count2] = reli(data2,edges,a,b,20);
+        [S3, Count3] = reli(data3,edges,a,b,20);
+
+        S = S1+S2+S3;
+        Count = Count1+Count2+Count3;
+
+        figure(1)
+        plot(edges+.01, S./Count*100,'LineWidth',1.5,'LineStyle','-')
+        hold on
+    end
+end
+grid on
+% plot(edges, S2./Count2*100,'LineWidth',1.5,'LineStyle','--')
+% plot(edges, S3./Count3*100,'LineWidth',1.5,'LineStyle','--')
+% plot(edges, S./Count*100,'LineWidth',1.5,'LineStyle','-')
+% hold off
+xlim([.1 50])
+plot([.1 100],[95 95],'-k','LineWidth',1.5);
+
+xlabel('True Absolute Hich-Angle (degree)')
+ylabel('Reliability (%)')
+legend(leg,'Interpreter','latex','Location','southeast','FontSize',12)
+
+set(gca, 'FontSize',12)
+set(gcf, 'Position', [100, 100, 600, 300])
+saveas(figure(1), 'reliability','epsc')
+
+
+%% Processing time
+
+mean(data.Time)
+
+%%
+
+function out = myshift(f,delta)
+    df = f;
+    df(1) = f(1)-f(2);
+    df(end) = f(end)-f(end-1);
+    for i=2:length(f)-1
+        df(i) = (f(i+1)-f(i-1))/2;
+    end
+    out = f + delta*df;
+end
+
+function [S, Count] = reli(data,edges,a,b,Te)
+    while isnan(data{1,1})
+        data(1,:)=[];
+    end
+    l = height(data);
+    x = 1:l;
+    x_new = 1:.01:l;
+    cam_new = interp1(x,data.Cam,x_new);
+    ver_new = interp1(x,data.Vernier,x_new);
+    [c, lags] = xcorr(cam_new, ver_new,100, 'normalized');
+    delta = -lags(c == max(c))/100;
+    cam = data.Cam;
+    ver = myshift(data.Vernier,delta);
+    dc = fitlm(ver,cam);
+    ver = (ver+dc.Coefficients.Estimate(1))*dc.Coefficients.Estimate(2);
+    data.Cam = cam;
+    data.Vernier = ver;
+    data.Slope = [0;0;cam(3:end)-cam(2:end-1)];
+
+    T = abs(data.Slope)<Te;
+
+    ver = ver(T);
+    cam = cam(T);
+    Count = zeros(length(edges),1);
+    S = zeros(length(edges),1);
+    for i = 1:length(ver)
+        temp = discretize(abs(ver(i)),edges);
+        Count(temp) = Count(temp)+1;
+        if abs(cam(i)-ver(i))<= abs(ver(i))*a+b
+            S(temp) = S(temp)+1;
+        end
+    end
+end
+
+function [cam,ver,slope]=cln(data)
+    while isnan(data{1,1})
+        data(1,:)=[];
+    end
+
+    cam = data.Cam;
+    ver = data.Vernier;
+    T = abs(cam)<20 & ~isnan(ver);
+    cam_i = cam(T);
+    ver_i = ver(T);
+    l = length(cam_i);
+    x = 1:l;
+    x_new = 1:.01:l;
+    cam_new = interp1(x,cam_i,x_new);
+    ver_new = interp1(x,ver_i,x_new);
+    [c, lags] = xcorr(cam_new, ver_new,100, 'normalized');
+    delta = -lags(c == max(c))/100;
+    ver = myshift(ver,delta);
+    s = [0;1.22];
+    ver = (ver)/s(2);
+    slope = [0;diff(cam)];
+end
+
+function [cam,ver,radar,slope]=clnRADAR(data)
+    while isnan(data{1,1})
+        data(1,:)=[];
+    end
+
+    cam = data.Cam;
+    ver = data.Vernier;
+    radar = data.Radar;
+    T = abs(cam)<20 & ~isnan(ver)& ~isnan(radar);
+    cam_i = cam(T);
+    ver_i = ver(T);
+    radar_i = radar(T);
+    l = length(cam_i);
+    x = 1:l;
+    x_new = 1:.01:l;
+    cam_new = interp1(x,cam_i,x_new);
+    ver_new = interp1(x,ver_i,x_new);
+    [c, lags] = xcorr(cam_new, ver_new,100, 'normalized');
+    delta = -lags(c == max(c))/100;
+    ver = myshift(ver,delta);
+    radar_new = interp1(x,radar_i,x_new);
+    [c, lags] = xcorr(cam_new, radar_new,100, 'normalized');
+    delta = -lags(c == max(c))/100;
+    radar = myshift(radar,delta);
+    slope = [0;diff(cam)];
+    dc = fitlm(radar,ver);
+    s = dc.Coefficients.Estimate
+    ver = (ver-s(1))/s(2);
+    [p,l] = findpeaks(radar);
+    radar(l) = NaN;
+    radar(l-1) = NaN;
+    ver = (nanmean([radar ver],2));
+end

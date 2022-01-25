@@ -9,8 +9,9 @@ Available image formats are     (depending on platform):
 """
 from pypylon import pylon
 import platform
+import time
 
-num_img_to_save = 5
+num_img_to_save = 10
 img = pylon.PylonImage()
 tlf = pylon.TlFactory.GetInstance()
 
@@ -28,11 +29,12 @@ for i in range(num_img_to_save):
             # The JPEG format that is used here supports adjusting the image
             # quality (100 -> best quality, 0 -> poor quality).
             ipo = pylon.ImagePersistenceOptions()
-            quality = 90 - i * 10
-            ipo.SetQuality(quality)
+            quality = 10
+            ipo.SetQuality(quality=100)
 
-            filename = "saved_pypylon_img_%d.jpeg" % quality
+            filename = "saved_pypylon_img_%d.jpeg" % i
             img.Save(pylon.ImageFileFormat_Jpeg, filename, ipo)
+            time.sleep(2)
         else:
             filename = "saved_pypylon_img_%d.png" % i
             img.Save(pylon.ImageFileFormat_Png, filename)

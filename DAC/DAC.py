@@ -6,12 +6,13 @@ from time import gmtime, strftime, localtime
 import numpy as np
 import csv
 import os
+import winsound
 
 ## RADAR
 import serial
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
-import matplotlib.pyplot as plt
+# import pyqtgraph as pg
+# from pyqtgraph.Qt import QtGui
+# import matplotlib.pyplot as plt
 
 ## Vernier
 from gdx import gdx
@@ -20,126 +21,6 @@ gdx = gdx.gdx()
 ## Camera
 from pypylon import pylon
 import platform
-
-
-# Set Directory and Create CSV
-os.chdir('/Users/moj/TAD/')
-dirpath, dirname = createFolder()
-myFile = open(dirname+'.csv', 'w', newline='')
-writer = csv.writer(myFile)
-writer.writerow(['Index', 'time', column_header])
-
-# Sensor Setup
-
-## RADAR
-# Change the configuration file name
-configFileName = '1642config.cfg'
-CLIportP = {}
-DataportP = {}
-CLIportD = {}
-DataportD = {}
-
-
-CLIportD, DataportD, CLIportP, DataportP = serialConfig(configFileName)
-
-# Get the configuration parameters from the configuration file
-configParameters = parseConfigFile(configFileName)
-
-# START QtAPPfor the plot
-app = QtGui.QApplication([])
-
-## Vernier
-gdx.open_usb()
-gdx.select_sensors([6])
-gdx.start(period=20)
-column_header = gdx.enabled_sensor_info()
-
-## Camera
-"""
-Available image formats are     (depending on platform):
- - pylon.ImageFileFormat_Bmp    (Windows)
- - pylon.ImageFileFormat_Tiff   (Linux, Windows)
- - pylon.ImageFileFormat_Jpeg   (Windows)
- - pylon.ImageFileFormat_Png    (Linux, Windows)
- - pylon.ImageFileFormat_Raw    (Windows)
-"""
-img = pylon.PylonImage()
-tlf = pylon.TlFactory.GetInstance()
-
-cam = pylon.InstantCamera(tlf.CreateFirstDevice())
-cam.Open()
-cam.StartGrabbing()
-ipo = pylon.ImagePersistenceOptions()
-ipo.SetQuality(quality=100)
-
-#___________________Main__________________________
-detObjD = {}
-detObjP = {}
-frameDataD = {}
-frameDataP = {}
-currentIndex = 0
-while True:
-    try:
-        # Update Radar data and check if the data is okay
-
-        dataOkD, dataOkP = update()
-
-        if dataOkD and dataOkP:
-            # Store the current frame into frameData
-            frameDataD[currentIndex] = detObjD
-            frameDataP[currentIndex] = detObjP
-        # Update Vernier data and check if the data is okay
-        measurements = gdx.read()
-
-        # time.sleep(0.033)  # Sampling frequency of 30 Hz
-
-        # Update Camera data
-        with cam.RetrieveResult(2000) as result:
-            # Calling AttachGrabResultBuffer creates another reference to the
-            # grab result buffer. This prevents the buffer's reuse for grabbing.
-            img.AttachGrabResultBuffer(result)
-            filename = "img_%d.jpeg" % currentIndex
-            img.Save(pylon.ImageFileFormat_Jpeg, filename, ipo)
-            # In order to make it possible to reuse the grab result for grabbing
-            # again, we have to release the image (effectively emptying the
-            # image object).
-            img.Release()
-
-        currentIndex += 1
-
-    # Stop the program and close everything if Ctrl + c is pressed
-    except KeyboardInterrupt:
-        CLIportD.write(('sensorStop\n').encode())
-        CLIportD.close()
-        DataportD.close()
-        CLIportP.write(('sensorStop\n').encode())
-        CLIportP.close()
-        DataportP.close()
-        win.close()
-        break
-
-
-
-# Closing
-## RADAR
-
-CLIportD.write(('sensorStop\n').encode())
-CLIportD.close()
-DataportD.close()
-CLIportP.write(('sensorStop\n').encode())
-CLIportP.close()
-DataportP.close()
-win.close()
-
-
-## Vernier
-gdx.stop()
-gdx.close()
-
-## Camera
-cam.StopGrabbing()
-cam.Close()
-
 
 # Functions
 
@@ -173,8 +54,8 @@ def serialConfig(configFileName):
     # Windows
     CLIportP = serial.Serial('COM3', 115200)
     DataportP = serial.Serial('COM4', 921600)
-    CLIportD = serial.Serial('COM3', 115200)
-    DataportD = serial.Serial('COM4', 921600)
+    CLIportD = serial.Serial('COM7', 115200)
+    DataportD = serial.Serial('COM8', 921600)
 
     # Read the configuration file and send it to the board
     config = [line.rstrip('\r\n') for line in open(configFileName)]
@@ -185,6 +66,7 @@ def serialConfig(configFileName):
         time.sleep(0.01)
 
     return CLIportD, DataportD, CLIportP, DataportP
+#     # return CLIportP, DataportP
 
 # Function to parse the data inside the configuration file
 def parseConfigFile(configFileName):
@@ -198,15 +80,15 @@ def parseConfigFile(configFileName):
         splitWords = i.split(" ")
 
         # Hard code the number of antennas, change if other configuration is used
-        numRxAnt = 6
+        numRxAnt = 4
         numTxAnt = 2
 
         # Get the information about the profile configuration
         if "profileCfg" in splitWords[0]:
             startFreq = int(splitWords[2])
             idleTime = int(splitWords[3])
-            rampEndTime = int(splitWords[5]);
-            freqSlopeConst = int(splitWords[8]);
+            rampEndTime = float(splitWords[5]);
+            freqSlopeConst = float(splitWords[8]);
             numAdcSamples = int(splitWords[10]);
             numAdcSamplesRoundTo2 = 1;
 
@@ -410,31 +292,159 @@ def readAndParseData16xx(Dataport, configParameters):
 
     return dataOK, frameNumber, detObj
 
-
 # Funtion to update the data and display in the plot
 def update():
     dataOkD = 0
     global detObjD
-    xD = []
-    yD = []
     dataOkP = 0
     global detObjP
-    xP = []
-    yP = []
     # Read and parse the received data
     dataOkD, frameNumberD, detObjD = readAndParseData16xx(DataportD, configParameters)
     dataOkP, frameNumberP, detObjP = readAndParseData16xx(DataportP, configParameters)
-    if dataOkD:
-        # print(detObj)
-        xD = -detObjD["x"]
-        yD = detObjD["y"]
-    if dataOkP:
-        xP = -detObjP["x"]
-        yP = detObjP["y"]
-
-    s.setData(xD, yD)
-    s.setData(xP, yP)
-
-    QtGui.QApplication.processEvents()
 
     return dataOkD, dataOkP
+    # return dataOkP
+
+def fixSleep(Period):
+    global next
+    now = time.time()
+    if now < next:
+        time.sleep(next-now)
+        next +=Period
+    else:
+        print('Slowed Down')
+        next = now + Period
+
+
+# Sensor Setup
+
+## RADAR
+# Change the configuration file name
+configFileName = 'C:/TAD-Mojtaba/Python Codes/profile_6m.cfg'
+CLIportP = {}
+DataportP = {}
+CLIportD = {}
+DataportD = {}
+
+
+CLIportD, DataportD, CLIportP, DataportP = serialConfig(configFileName)
+
+# Get the configuration parameters from the configuration file
+configParameters = parseConfigFile(configFileName)
+
+# START QtAPPfor the plot
+# app = QtGui.QApplication([])
+
+
+
+## Camera
+"""
+Available image formats are     (depending on platform):
+ - pylon.ImageFileFormat_Bmp    (Windows)
+ - pylon.ImageFileFormat_Tiff   (Linux, Windows)
+ - pylon.ImageFileFormat_Jpeg   (Windows)
+ - pylon.ImageFileFormat_Png    (Linux, Windows)
+ - pylon.ImageFileFormat_Raw    (Windows)
+"""
+img = pylon.PylonImage()
+tlf = pylon.TlFactory.GetInstance()
+
+cam = pylon.InstantCamera(tlf.CreateFirstDevice())
+cam.Open()
+cam.StartGrabbing()
+ipo = pylon.ImagePersistenceOptions()
+ipo.SetQuality(quality=50)
+
+# Set Directory and Create CSV
+os.chdir('C:/TAD-Mojtaba')
+dirpath, dirname = createFolder()
+print(dirpath)
+myFile = open(dirpath+'/'+dirname+'.csv', 'w', newline='')
+writer = csv.writer(myFile)
+
+#___________________Main__________________________
+detObjD = {}
+detObjP = {}
+frameDataD = {}
+frameDataP = {}
+global next
+next = time.time()
+currentIndex = 0
+## Vernier
+gdx.open_usb()
+gdx.select_sensors([6])
+gdx.start(period=333)
+column_header = gdx.enabled_sensor_info()
+
+
+writer.writerow(["index", "time", column_header, "p_x", "p_y", "p_range", "p_val", "d_x", "d_y", "d_range", "d_val"])
+
+
+while currentIndex < 400:
+    print(currentIndex)
+    try:
+        # Update Radar data and check if the data is okay
+        dataOkD, dataOkP = update()
+        if dataOkD and dataOkP:
+            # Store the current frame into frameData
+            frameDataD[currentIndex] = detObjD
+            frameDataP[currentIndex] = detObjP
+        # Update Vernier data and check if the data is okay
+        measurements = gdx.read()
+
+        if dataOkD and dataOkP:
+            writer.writerow([currentIndex, time.time(), np.degrees(measurements),
+                             detObjP["x"], detObjP["y"], detObjP["range"], detObjP["peakVal"],
+                             detObjD["x"], detObjD["y"], detObjD["range"], detObjD["peakVal"]])
+            # writer.writerow([currentIndex, time.time(), np.degrees(measurements)])
+        # Update Camera data
+        with cam.RetrieveResult(2000) as result:
+            # Calling AttachGrabResultBuffer creates another reference to the
+            # grab result buffer. This prevents the buffer's reuse for grabbing.
+            img.AttachGrabResultBuffer(result)
+            filename = "Figures/img_%d.jpeg" % currentIndex
+            if dataOkD and dataOkP:
+                img.Save(pylon.ImageFileFormat_Jpeg, filename, ipo)
+            # In order to make it possible to reuse the grab result for grabbing
+            # again, we have to release the image (effectively emptying the
+            # image object).
+            img.Release()
+        cam.StopGrabbing()
+
+        cam.StartGrabbing()
+        if  np.mod(currentIndex, 20) == 19:
+            winsound.PlaySound("*", winsound.SND_ASYNC)
+        fixSleep(.333) # Sampling frequency of 3 Hz
+        currentIndex += 1
+
+    # Stop the program and close everything if Ctrl + c is pressed
+    except KeyboardInterrupt:
+        CLIportD.write(('sensorStop\n').encode())
+        CLIportD.close()
+        DataportD.close()
+        CLIportP.write(('sensorStop\n').encode())
+        CLIportP.close()
+        DataportP.close()
+        break
+
+
+
+# Closing
+## RADAR
+CLIportD.write(('sensorStop\n').encode())
+CLIportD.close()
+DataportD.close()
+CLIportP.write(('sensorStop\n').encode())
+CLIportP.close()
+DataportP.close()
+
+
+## Vernier
+gdx.stop()
+gdx.close()
+
+## Camera
+cam.StopGrabbing()
+cam.Close()
+
+
